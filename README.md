@@ -78,12 +78,13 @@ tp user view --token "pub_yyyyyyyy"
 tp --help
 ```
 
-Tính năng nổi bật
-Tự động cập nhật: CLI sẽ tự động thông báo khi có phiên bản mới trên NPM.
+**Tính năng nổi bật**
 
-Gỡ lỗi: Sử dụng cờ --debug với bất kỳ lệnh nào để xem log chi tiết.
+- Tự động cập nhật: CLI sẽ tự động thông báo khi có phiên bản mới trên NPM.
 
-Hỗ trợ Stdin & Chế độ tương tác: Giúp việc tạo snippet trở nên cực kỳ linh hoạt.
+- Gỡ lỗi: Sử dụng cờ `--debug` với bất kỳ lệnh nào để xem log chi tiết.
+
+- Hỗ trợ Stdin & Chế độ tương tác: Giúp việc tạo snippet trở nên cực kỳ linh hoạt.
 
 > Tài liệu chi tiết: https://docs.teaserverse.online/triple-tool/teaserpaste/cli
 
