@@ -1,6 +1,6 @@
 {
   "name": "teaserpaste-cli",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "CLI Client for TeaserPaste - View, create, and manage snippets.",
   "main": "cli.js",
   "bin": {
@@ -15,11 +15,11 @@
     "build": "bun build ./cli.js --compile --outfile dist/tp"
   },
   "dependencies": {
+    "clipboardy": "^5.0.0",
     "inquirer": "^12.9.6",
     "node-fetch": "^2.6.7",
+    "open": "^10.2.0",
     "update-notifier": "^7.3.1"
   },
-  "devDependencies": {},
   "preferGlobal": true
 }
-

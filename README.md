@@ -1,90 +1,66 @@
 # TeaserPaste CLI (`tp`)
-TeaserPaste CLI (`tp`) là một công cụ dòng lệnh mạnh mẽ giúp bạn tương tác với dịch vụ [TeaserPaste](https://paste.teaserverse.online) trực tiếp từ terminal. Dễ dàng xem, tạo, liệt kê và quản lý snippets mà không cần rời khỏi môi-trường-làm-việc của bạn.
+**TeaserPaste CLI** (`tp`) là một công cụ dòng lệnh mạnh mẽ giúp bạn tương tác với dịch vụ [TeaserPaste](https://paste.teaserverse.online) trực tiếp từ terminal. Dễ dàng xem, tạo, và quản lý snippets mà không cần rời khỏi môi trường làm việc của bạn.
 
-Phiên bản hiện tại: 0.3.0 (Alpha) - Vui lòng lưu ý rằng các tính năng và cú pháp có thể thay đổi.
+**Phiên bản hiện tại:** 0.4.0 (Alpha) - *Vui lòng lưu ý rằng các tính năng và cú pháp có thể thay đổi.*
 
-Cài đặt
-Để cài đặt `teaserpaste-cli` trên toàn hệ thống, hãy sử dụng npm:
+# Cài đặt
+
+- Yêu cầu [Node.js](https://nodejs.org/en/download) v18 trở lên.
 ```
 npm install -g teaserpaste-cli
 ```
 
-**Hướng dẫn sử dụng**
-1. Cấu hình (config)
-Để không phải gõ `--token` mỗi lần, bạn hãy lưu private key của mình một lần duy nhất.
-
-Cú pháp: `tp config set token <private_token>`
-
-Ví dụ:
+# Cấu hình lần đầu
+Để không phải gõ API key mỗi lần, hãy lưu private key của bạn một lần duy nhất:
 ```
 tp config set token "priv_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 ```
 
-**2. Tạo Snippet (create)**
-
-Hỗ trợ nhiều cách tạo snippet linh hoạt. Lệnh này sẽ tự động dùng token bạn đã lưu.
-
-Cú pháp: `tp create [options]`
-
-Ví dụ:
+# Hướng dẫn sử dụng nhanh
+Tạo Snippet
 ```
-# Tạo nhanh bằng các tham số
-tp create --title "Ghi chú họp" --content "Nội dung cuộc họp..."
-
-# Tạo từ nội dung file (siêu tiện!)
-cat my-script.js | tp create --title "My Script" --language "javascript"
-
-# Tạo bằng chế độ tương tác (dễ sử dụng)
+# Cách thân thiện nhất (CLI sẽ hỏi bạn từng bước)
 tp create -i
+
+# Cách chuyên nghiệp (tạo snippet từ nội dung file)
+cat my_script.js | tp create --title "My Script" --language "javascript"
+
+# Cách nhanh nhất (cung cấp đủ tham số)
+tp create --title "Ghi chú" --content "Nội dung ghi chú"
 ```
 
-**3. Liệt kê Snippets (list)**
-
-Xem danh sách các snippet bạn đã tạo.
-
-Cú pháp: `tp list [options]`
-
-Ví dụ:
+# Xem và Quản lý Snippet
 ```
-# Liệt kê 20 snippet mới nhất
+# Liệt kê các snippet của bạn
 tp list
 
-# Liệt kê 5 snippet private mới nhất
-tp list --visibility private --limit 5
+# Xem chi tiết một snippet
+tp view <snippet_id>
+
+# Chỉ lấy nội dung thô (để dùng trong script)
+tp view <snippet_id> --raw
+
+# Sao chép nội dung vào clipboard
+tp view <snippet_id> --copy
+
+# Mở snippet trên trình duyệt
+tp view <snippet_id> --web
+
+# Tìm kiếm public snippets
+tp search "javascript example"
+
+# Xóa một snippet
+tp delete <snippet_id>
 ```
 
-**4. Xem Snippet (view)**
-
-Hiển thị nội dung của một snippet. Lệnh này sẽ tự động dùng token đã lưu để xem snippet private và bỏ qua mật khẩu.
-
-Cú pháp: `tp view <id> [options]`
-
-Ví dụ:
+# Trợ giúp
 ```
-# Xem một snippet public
-
-tp view publicSnippetID
-
-# Xem snippet private của bạn (không cần --token nếu đã config)
-tp view privateSnippetID
-```
-
-**5. Các lệnh khác**
-```
-# Xem thông tin người dùng bằng public key
-tp user view --token "pub_yyyyyyyy"
-
-# Xem tất cả các lệnh và tùy chọn
+# Để xem tất cả các lệnh và tùy chọn có sẵn:
 tp --help
+
+# Để xem phiên bản CLI hiện tại:
+tp --version
 ```
-
-**Tính năng nổi bật**
-
-- Tự động cập nhật: CLI sẽ tự động thông báo khi có phiên bản mới trên NPM.
-
-- Gỡ lỗi: Sử dụng cờ `--debug` với bất kỳ lệnh nào để xem log chi tiết.
-
-- Hỗ trợ Stdin & Chế độ tương tác: Giúp việc tạo snippet trở nên cực kỳ linh hoạt.
 
 > Tài liệu chi tiết: https://docs.teaserverse.online/triple-tool/teaserpaste/cli
 
