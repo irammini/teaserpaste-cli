@@ -1,10 +1,14 @@
 {
   "name": "teaserpaste-cli",
-  "version": "0.3.0-earlyv1",
-  "description": "CLI Client for TeaserPaste - View and Clone snippets.",
+  "version": "0.3.0",
+  "description": "CLI Client for TeaserPaste - View, create, and manage snippets.",
   "main": "cli.js",
   "bin": {
-    "tp": "cli.js"
+    "tp": "./cli.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/irammini/teaserpaste-cli.git"
   },
   "scripts": {
     "start": "node cli.js",
@@ -12,7 +16,10 @@
   },
   "dependencies": {
     "inquirer": "^12.9.6",
-    "node-fetch": "^2.6.7"
+    "node-fetch": "^2.6.7",
+    "update-notifier": "^7.3.1"
   },
+  "devDependencies": {},
   "preferGlobal": true
 }
+

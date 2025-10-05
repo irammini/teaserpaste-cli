@@ -1,21 +1,24 @@
 #!/usr/bin/env node
 const { default: fetch } = require('node-fetch');
 const ConfigManager = require('./config-manager');
-const inquirer = require('inquirer');
+const logger = require('./logger');
+const pkg = require('./package.json');
 
 const BASE_API_URL = 'https://paste-api.teaserverse.online';
 
-// --- HÀM TIỆN ÍCH ---
 function readFromStdin() {
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
         let data = '';
+        process.stdin.setEncoding('utf8');
         process.stdin.on('readable', () => {
             let chunk;
-            while (null !== (chunk = process.stdin.read())) {
+            while ((chunk = process.stdin.read()) !== null) {
                 data += chunk;
             }
         });
-        process.stdin.on('end', () => resolve(data.trim()));
+        process.stdin.on('end', () => {
+            resolve(data.trim());
+        });
     });
 }
 
@@ -35,14 +38,13 @@ async function apiRequest(endpoint, method, body, token = null) {
     const data = await response.json();
     if (!response.ok) {
         if (data.requiresPassword) {
-             throw new Error(`Snippet yêu cầu mật khẩu. Vui lòng cung cấp với --password "pass"`);
+            throw new Error(`Snippet yêu cầu mật khẩu. Vui lòng cung cấp với --password "pass"`);
         }
         throw new Error(data.error || `Lỗi không xác định (${response.status})`);
     }
     return data;
 }
 
-// --- LOGIC HIỂN THỊ ---
 function printSnippet(snippet) {
     console.log('\n=====================================');
     console.log(`TEASERPASTE SNIPPET: ${snippet.id}`);
@@ -68,7 +70,6 @@ function printUser(user) {
     console.log('-------------------------------------\n');
 }
 
-// --- CÁC LỆNH ---
 async function viewSnippet(id, token, password) {
     try {
         const snippet = await apiRequest('/getSnippet', 'POST', { snippetId: id, password }, token);
@@ -90,52 +91,40 @@ async function viewUser(token) {
 async function createSnippet(token, args) {
     try {
         let snippetData = {};
+        const isInteractive = args.includes('-i') || args.includes('--interactive');
+        const hasContentFlag = args.includes('--content');
 
-        // Ưu tiên 1: Đọc từ stdin nếu có
-        if (!process.stdin.isTTY) {
-            console.log("Đang đọc nội dung từ stdin...");
-            const contentFromStdin = await readFromStdin();
-            snippetData = {
-                title: args.title || 'Snippet from stdin',
-                content: contentFromStdin,
-                language: args.language || 'plaintext',
-                visibility: args.visibility || 'unlisted',
-                password: args.password || '',
-                tags: (args.tags || '').split(',').filter(Boolean),
-            };
-        }
-        // Ưu tiên 2: Chế độ tương tác
-        else if (args.interactive) {
-             const answers = await inquirer.prompt([
-                { name: 'title', message: 'Tiêu đề snippet:', default: 'Untitled' },
-                { name: 'language', message: 'Ngôn ngữ:', default: 'plaintext' },
-                { name: 'visibility', type: 'list', message: 'Chế độ hiển thị:', choices: ['unlisted', 'public', 'private'], default: 'unlisted' },
-                { name: 'password', message: 'Mật khẩu (nếu unlisted):', when: (ans) => ans.visibility === 'unlisted' },
-                { name: 'tags', message: 'Tags (phân cách bởi dấu phẩy):' },
-                { name: 'content', type: 'editor', message: 'Nhập nội dung (Lưu & đóng editor để tiếp tục):' }
-             ]);
-             snippetData = { ...answers, tags: (answers.tags || '').split(',').filter(Boolean) };
-        }
-        // Ưu tiên 3: Đọc từ tham số dòng lệnh
-        else {
-             if (!args.title || !args.content) {
-                console.error(`\n❌ Lỗi: Thiếu --title hoặc --content. Dùng 'tp create -i' để vào chế độ tương tác.\n`);
+        if (isInteractive) {
+            const { default: inquirer } = await import('inquirer');
+            const answers = await inquirer.prompt([
+                { type: 'input', name: 'title', message: 'Tiêu đề snippet:', default: 'Untitled' },
+                { type: 'input', name: 'language', message: 'Ngôn ngữ (bỏ trống cho plaintext):', default: 'plaintext' },
+                { type: 'list', name: 'visibility', message: 'Chế độ hiển thị:', choices: ['unlisted', 'public', 'private'], default: 'unlisted' },
+                { type: 'password', name: 'password', message: 'Đặt mật khẩu (bỏ trống nếu không cần):', mask: '*', when: (ans) => ans.visibility === 'unlisted' },
+                { type: 'editor', name: 'content', message: 'Nhập nội dung (lưu và đóng editor khi xong):' }
+            ]);
+            snippetData = answers;
+        } else if (!process.stdin.isTTY && !hasContentFlag) {
+            snippetData.content = await readFromStdin();
+            const parsedArgs = parseArgs(args);
+            snippetData.title = parsedArgs.title || 'Untitled';
+            snippetData.language = parsedArgs.language || 'plaintext';
+            snippetData.visibility = parsedArgs.visibility || 'unlisted';
+            snippetData.password = parsedArgs.password || '';
+            snippetData.tags = (parsedArgs.tags || '').split(',').filter(Boolean);
+        } else {
+            const parsedArgs = parseArgs(args);
+            if (!parsedArgs.title || !parsedArgs.content) {
+                console.error(`\n❌ Lỗi: Thiếu tham số --title hoặc --content. Dùng -i để vào chế độ tương tác.\n`);
                 return;
-             }
-             snippetData = {
-                title: args.title,
-                content: args.content,
-                language: args.language || 'plaintext',
-                visibility: args.visibility || 'unlisted',
-                password: args.password || '',
-                tags: (args.tags || '').split(',').filter(Boolean),
-             };
+            }
+            snippetData = parsedArgs;
+            snippetData.tags = (parsedArgs.tags || '').split(',').filter(Boolean);
         }
 
         const newSnippet = await apiRequest('/createSnippet', 'POST', snippetData, token);
         console.log(`\n✅ Đã tạo snippet thành công!`);
         console.log(`ID: ${newSnippet.id}\n`);
-
     } catch (error) {
         console.error(`\n❌ Lỗi: ${error.message}\n`);
     }
@@ -143,62 +132,84 @@ async function createSnippet(token, args) {
 
 async function listSnippets(token, args) {
     try {
-        const params = new URLSearchParams();
-        if (args.limit) params.append('limit', args.limit);
-        if (args.visibility) params.append('visibility', args.visibility);
+        const parsedArgs = parseArgs(args);
+        const snippets = await apiRequest('/listSnippets', 'POST', {
+            limit: parsedArgs.limit ? parseInt(parsedArgs.limit, 10) : 20,
+            visibility: parsedArgs.visibility
+        }, token);
 
-        const endpoint = `/listSnippets?${params.toString()}`;
-        const snippets = await apiRequest(endpoint, 'GET', null, token);
-
-        if (snippets.length === 0) {
-            console.log("\nKhông tìm thấy snippet nào khớp với tiêu chí.\n");
+        if (!snippets || snippets.length === 0) {
+            console.log('\nKhông tìm thấy snippet nào.\n');
             return;
         }
 
-        console.log('\n--- DANH SÁCH SNIPPET CỦA BẠN ---');
-        console.log(
-            'ID'.padEnd(22) +
-            'Tiêu đề'.padEnd(35) +
-            'Visibility'.padEnd(15) +
-            'Ngôn ngữ'
-        );
-        console.log('-'.repeat(90));
-
-        snippets.forEach(s => {
-            const title = s.title.length > 30 ? s.title.substring(0, 27) + '...' : s.title;
-            console.log(
-                s.id.padEnd(22) +
-                title.padEnd(35) +
-                s.visibility.padEnd(15) +
-                s.language
-            );
-        });
-        console.log('-'.repeat(90) + '\n');
+        console.table(snippets.map(s => ({
+            ID: s.id,
+            TITLE: s.title,
+            VISIBILITY: s.visibility,
+            LANGUAGE: s.language,
+        })));
     } catch (error) {
         console.error(`\n❌ Lỗi: ${error.message}\n`);
     }
 }
 
-function manageConfig(args) { /* ... Giữ nguyên như phiên bản trước ... */ }
+function manageConfig(args) {
+    const [action, key, value] = args;
+    if (!action) {
+        console.log(`\nSử dụng: tp config <set|get|clear> [key] [value]`);
+        console.log(`  tp config set token <private_token>`);
+        console.log(`  tp config get token`);
+        console.log(`  tp config clear token\n`);
+        return;
+    }
+    switch (action.toLowerCase()) {
+        case 'set':
+            if (key === 'token' && value) {
+                try {
+                    ConfigManager.setToken(value);
+                    console.log('\n✅ Token đã được lưu thành công!\n');
+                } catch (error) {
+                    console.error(`\n❌ Lỗi: ${error.message}\n`);
+                }
+            } else {
+                console.error('\n❌ Lỗi: Cú pháp sai. Sử dụng: tp config set token <your_private_token>\n');
+            }
+            break;
+        case 'get':
+            if (key === 'token') {
+                const token = ConfigManager.getToken();
+                if (token) {
+                    console.log(`\n🔑 Token hiện tại: ${token}\n`);
+                } else {
+                    console.log('\nBạn chưa thiết lập token nào, hoặc file cấu hình không thể đọc/ghi.\n');
+                }
+            }
+            break;
+        case 'clear':
+            if (key === 'token') {
+                ConfigManager.clearToken();
+                console.log('\n✅ Token đã được xóa.\n');
+            }
+            break;
+        default:
+            console.error(`\n❌ Lỗi: Hành động '${action}' không hợp lệ cho lệnh 'config'.\n`);
+    }
+}
 
-// --- XỬ LÝ DÒNG LỆNH ---
 function parseArgs(argv) {
-    const args = { _: [] };
+    const args = {};
+    let lastKey = '_';
+    args[lastKey] = [];
     for (let i = 0; i < argv.length; i++) {
         const arg = argv[i];
         if (arg.startsWith('--')) {
-            const key = arg.substring(2);
-            if (argv[i + 1] && !argv[i + 1].startsWith('--')) {
-                args[key] = argv[i + 1];
-                i++;
-            } else {
-                args[key] = true;
-            }
+            lastKey = arg.substring(2);
+            args[lastKey] = argv[i + 1] ? argv[i + 1] : true;
+            i++;
         } else if (arg.startsWith('-')) {
-             const key = arg.substring(1);
-             if (key === 'i') args['interactive'] = true;
-        }
-        else {
+             args[arg.substring(1)] = true;
+        } else {
             args['_'].push(arg);
         }
     }
@@ -210,37 +221,44 @@ function showHelp() {
 --- CLI TeaserPaste (v0.3.0) ---
 
 Sử dụng: 
-  tp <lệnh> [tham số]
+  tp <lệnh> [tham số] [tùy chọn]
 
 Các lệnh:
-  view <id> [--password <pass>]
-    Xem một snippet.
+  view <id>                 Xem một snippet.
+  list                      Liệt kê các snippet của bạn.
+  create [tùy chọn]         Tạo một snippet mới.
+  user view                 Xem thông tin người dùng của bạn.
+  config <set|get|clear>    Quản lý cấu hình CLI.
 
-  list [--limit 20] [--visibility <vis>]
-    Liệt kê các snippet của bạn.
-    Ví dụ: tp list --visibility private
-
-  user view [--token <public_key>]
-    Xem thông tin người dùng.
-
-  create [tùy chọn]
-    Tạo snippet mới. Có 3 cách dùng:
-    1. Dùng tham số: tp create --title "..." --content "..."
-    2. Tương tác:    tp create -i
-    3. Dùng stdin:   cat file.js | tp create --title "Từ file"
-
-  config <set|get|clear> token [value]
-    Quản lý cấu hình, lưu private key.
-
-  --help, -h      Hiển thị trợ giúp
-  --version       Hiển thị phiên bản
+Tùy chọn chung:
+  --token <key>             Sử dụng một token cụ thể cho lệnh này.
+  --debug                   Hiển thị log chi tiết để gỡ lỗi.
+  --help, -h                Hiển thị trợ giúp.
+  --version                 Hiển thị phiên bản.
     `);
 }
 
 async function main() {
-    const rawArgs = process.argv.slice(2);
-    if (rawArgs.length === 0 || rawArgs.includes('--help') || rawArgs.includes('-h')) return showHelp();
-    if (rawArgs.includes('--version')) return console.log('0.3.0');
+    // Dynamically import ESM packages
+    const { default: updateNotifier } = await import('update-notifier');
+    updateNotifier({ pkg }).notify();
+
+    let rawArgs = process.argv.slice(2);
+    const debugIndex = rawArgs.indexOf('--debug');
+    if (debugIndex > -1) {
+        logger.init(true);
+        rawArgs.splice(debugIndex, 1);
+        logger.log('Chế độ debug đã được kích hoạt.');
+    }
+
+    if (rawArgs.length === 0 || rawArgs.includes('--help') || rawArgs.includes('-h')) {
+        showHelp();
+        return;
+    }
+    if (rawArgs.includes('--version')) {
+        console.log('0.3.0');
+        return;
+    }
 
     const args = parseArgs(rawArgs);
     const [command, ...subArgs] = args['_'];
@@ -250,18 +268,21 @@ async function main() {
         case 'view':
             await viewSnippet(subArgs[0], token, args.password);
             break;
-        case 'list':
-            await listSnippets(token, args);
-            break;
         case 'user':
-            if (subArgs[0] === 'view') await viewUser(token || args.token);
-            else console.error(`Lệnh con không hợp lệ cho 'user'.`);
+            if (subArgs[0] === 'view') {
+                await viewUser(token);
+            } else {
+                console.error(`\n❌ Lỗi: Lệnh con '${subArgs[0] || ''}' không hợp lệ cho 'user'.\n`);
+            }
             break;
         case 'create':
-            await createSnippet(token, args);
+            await createSnippet(token, rawArgs);
             break;
         case 'config':
-            manageConfig(subArgs);
+            await manageConfig(subArgs);
+            break;
+        case 'list':
+            await listSnippets(token, rawArgs);
             break;
         default:
             console.error(`\n❌ Lỗi: Lệnh '${command}' không tồn tại.\n`);
@@ -270,3 +291,4 @@ async function main() {
 }
 
 main();
+
