@@ -78,8 +78,8 @@ tp create --token "priv_xxxxxxxx" --title "Ví dụ JS" --content "console.log('
 tp --help
 ```
 
-> Tài liệu: https://docs.teaserverse.online/triple-tool/teaserpaste/cli
+> Tài liệu chi tiết: https://docs.teaserverse.online/triple-tool/teaserpaste/cli
 
 ## Giấy phép
 
-[MIT](LICENSE)
+[MIT](LICENSE.txt)
